@@ -14,11 +14,13 @@ class FalVideoServiceImpl implements FalVideoService {
     // the configuration is applied if 'fal' itself doesn't expose config directly in this version.
     
     // Check if 'config' exists, otherwise rely on the environment variable FAL_KEY/NEXT_PUBLIC_FAL_KEY being set.
+    /*
     if (typeof fal.config === 'function') {
         fal.config({
             credentials: process.env.NEXT_PUBLIC_FAL_KEY, 
         });
     }
+    */
   }
 
   async generateVideo(prompt: string): Promise<string> {
