@@ -37,11 +37,8 @@ class RealStitcherService implements StitcherService {
       // we might skip actual ffmpeg or fail. 
       // To make this robust for the user's plan, I'll add a check.
       
-      if (options.videoClips[0].includes('mock-storage') || options.videoClips[0].includes('mixkit')) {
-        console.log('[Stitcher] Detected mock/preview URLs. Skipping actual FFmpeg processing and returning mock result.');
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        return 'https://mock-storage.com/final_video_assembled.mp4';
-      }
+      // Removed the mock/mixkit check to force real FFmpeg processing
+      // if (options.videoClips[0].includes('mock-storage') || options.videoClips[0].includes('mixkit')) { ... }
 
       console.log('[Stitcher] Downloading assets...');
       const videoPaths = await Promise.all(options.videoClips.map(url => this.downloadToTemp(url, 'mp4')));
@@ -83,6 +80,9 @@ class RealStitcherService implements StitcherService {
 
         // Text Overlay (Drawtext) - Only if hookText is provided
         if (options.hookText) {
+          // Note: using default font. If it fails, we might need to specify a font file path or use 'sans-serif'
+          // Check if fontconfig is available or point to a known font.
+          // For safety on standard linux, we try keeping it simple.
           complexFilter.push(`[vconcat]drawtext=text='${options.hookText.replace(/'/g, '')}':fontcolor=white:fontsize=64:x=(w-text_w)/2:y=h-400:enable='between(t,0,3)'[vfinal]`);
         } else {
           // Pass through [vconcat] as [vfinal] if no text

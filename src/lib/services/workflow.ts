@@ -2,6 +2,7 @@ import { jobStore } from './jobStore';
 import { grokService } from './grok';
 import { sunoService } from './suno';
 import { stitcherService } from './stitcher';
+import { falVideoService } from './fal';
 
 // This function orchestrates the entire AI video creation process
 export async function startWorkflow(jobId: string) {
@@ -33,8 +34,9 @@ export async function startWorkflow(jobId: string) {
     
     // Parallel execution
     const [videoUrls, audioUrl] = await Promise.all([
-      // Video generation (6 clips in parallel)
-      Promise.all(scenePrompts.scenes.map(prompt => grokService.generateVideo(prompt))),
+      // Video generation (6 clips in parallel) using Fal.ai (Minimax)
+      // Note: Grok doesn't have video API, so we use Fal.ai service
+      Promise.all(scenePrompts.scenes.map(prompt => falVideoService.generateVideo(prompt))),
       // Audio generation
       sunoService.generateMusic(musicPrompt)
     ]);
