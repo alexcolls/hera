@@ -9,10 +9,16 @@ export interface FalVideoService {
 class FalVideoServiceImpl implements FalVideoService {
   
   constructor() {
-    fal.config({
-      credentials: process.env.NEXT_PUBLIC_FAL_KEY, // Note: For server-side, use standard env, but client lib checks this.
-      // Better to proxy requests if this was client-side, but we are running in Next.js API route (Server).
-    });
+    // The @fal-ai/serverless-client is mainly for client-side usage and auto-configures.
+    // However, when running on server-side (Next.js API routes), we sometimes need to ensure 
+    // the configuration is applied if 'fal' itself doesn't expose config directly in this version.
+    
+    // Check if 'config' exists, otherwise rely on the environment variable FAL_KEY/NEXT_PUBLIC_FAL_KEY being set.
+    if (typeof fal.config === 'function') {
+        fal.config({
+            credentials: process.env.NEXT_PUBLIC_FAL_KEY, 
+        });
+    }
   }
 
   async generateVideo(prompt: string): Promise<string> {
@@ -39,7 +45,7 @@ class FalVideoServiceImpl implements FalVideoService {
         logs: true,
         onQueueUpdate: (update) => {
           if (update.status === 'IN_PROGRESS') {
-            update.logs.map((log) => console.log(log.message));
+             update.logs.map((log) => console.log(log.message));
           }
         },
       });
