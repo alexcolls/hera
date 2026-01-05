@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       logs: ['Job created', 'Image uploaded successfully'],
     };
 
-    jobStore.createJob(newJob);
+    await jobStore.createJob(newJob);
 
     // Trigger the workflow asynchronously
     startWorkflow(jobId).catch(console.error);
