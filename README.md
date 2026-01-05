@@ -105,3 +105,7 @@ When Supabase is enabled, this project expects:
 - `npm run build`: production build
 - `npm run start`: run production server
 - `npm run lint`: run eslint
+
+## License
+
+See [`LICENSE`](./LICENSE). This repository is **proprietary** and requires a commercial license for use.
