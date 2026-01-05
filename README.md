@@ -37,25 +37,6 @@ cp .env.sample .env
 
 Edit `.env` with your actual API keys.
 
-### Required
-
-- **`NEXT_PUBLIC_GROK_API_KEY`**: required (workflow will error without it)
-
-### Optional (will fall back to mocks/placeholders)
-
-- **`NEXT_PUBLIC_FAL_API_KEY`**: enables real Fal image/video generation
-- **`NEXT_PUBLIC_ELEVENLABS_API_KEY`**: enables real ElevenLabs voiceover generation
-- **`NEXT_PUBLIC_SUNO_API_KEY`**: currently not used (music generation is stubbed)
-
-### Optional (enables persistence + real uploads)
-
-If **both** of these are set, the app uses Supabase for job persistence and storage (recommended for real runs). Otherwise it falls back to an in-memory job store and mock “uploads”.
-
-Note: in the current code, mock storage returns fake URLs and dummy file buffers, which is enough to demo the UI but **won’t complete a real end-to-end generation** (Grok can’t fetch the uploaded image, and FFmpeg can’t stitch dummy buffers).
-
-- **`NEXT_PUBLIC_SUPABASE_URL`**
-- **`NEXT_PUBLIC_SUPABASE_ANON_KEY`**
-
 ## How it works
 
 ### App flow (UI)
