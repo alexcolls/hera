@@ -4,7 +4,7 @@ import { jobStore } from '@/lib/services/jobStore';
 import { v4 as uuidv4 } from 'uuid';
 import { startWorkflow } from '@/lib/services/workflow';
 import { storageService } from '@/lib/services/storage';
-import { AppLanguage } from '@/lib/i18n';
+import { AppLanguage } from '@/lib/i18n/i18n';
 import { AudioType, JobGenre, WorkflowModelConfig } from '@/lib/types/job';
 
 export async function POST(req: NextRequest) {

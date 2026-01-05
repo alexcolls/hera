@@ -1,5 +1,5 @@
 import { CharacterProfile, ScenePrompts } from '../types/grok';
-import { AppLanguage, getLanguageNameForPrompt } from '../i18n';
+import { AppLanguage, getLanguageNameForPrompt } from '../i18n/i18n';
 
 const GROK_API_KEY = process.env.NEXT_PUBLIC_GROK_API_KEY;
 const GROK_CHAT_URL = 'https://api.x.ai/v1/chat/completions';

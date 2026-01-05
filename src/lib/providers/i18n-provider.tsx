@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { AppLanguage, translate } from '@/lib/i18n';
+import { AppLanguage, translate } from '@/lib/i18n/i18n';
 
 const STORAGE_KEY = 'hera_language';
 

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Job, JobLog, JobLogEntry, JobStatus } from '@/lib/types/job';
 import StoryboardReview from './StoryboardReview';
 import VideoReview from './VideoReview';
-import { useI18n } from '@/components/i18n-provider';
+import { useI18n } from '@/lib/providers/i18n-provider';
 
 const STEPS: JobStatus[] = [
   'pending',

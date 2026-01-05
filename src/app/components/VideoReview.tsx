@@ -2,7 +2,7 @@
 
 import { Scene } from '@/lib/types/job';
 import { useState } from 'react';
-import { useI18n } from '@/components/i18n-provider';
+import { useI18n } from '@/lib/providers/i18n-provider';
 
 interface VideoReviewProps {
   jobId: string;

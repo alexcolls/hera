@@ -1,10 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import CreateJobForm from './components/CreateJobForm';
 import JobStatusDisplay from './components/JobStatusDisplay';
-import { useState } from 'react';
-import { ModeToggle } from '@/components/mode-toggle';
-import { useI18n } from '@/components/i18n-provider';
+import { ThemeToggle } from '@/app/components/ThemeToggle';
+import { useI18n } from '@/lib/providers/i18n-provider';
 
 export default function Home() {
   const [jobId, setJobId] = useState<string | null>(null);
@@ -47,7 +47,7 @@ export default function Home() {
             &copy; {new Date().getFullYear()} Hera Inc. {t('footer.rights')}
           </div>
           <div>
-            <ModeToggle />
+            <ThemeToggle />
           </div>
         </div>
       </footer>

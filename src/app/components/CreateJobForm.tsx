@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { APP_LANGUAGES, AppLanguage } from '@/lib/i18n';
-import { useI18n } from '@/components/i18n-provider';
+import { APP_LANGUAGES, AppLanguage } from '@/lib/i18n/i18n';
+import { useI18n } from '@/lib/providers/i18n-provider';
 
 export default function CreateJobForm({ onJobCreated }: { onJobCreated: (jobId: string) => void }) {
   const [loading, setLoading] = useState(false);
