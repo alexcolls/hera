@@ -50,7 +50,15 @@ class GrokServiceImpl implements GrokService {
       
       if (jsonMode) {
         try {
-          return JSON.parse(content);
+          // Clean the content of markdown code blocks if present
+          let cleanContent = content.trim();
+          if (cleanContent.startsWith('```json')) {
+            cleanContent = cleanContent.replace(/^```json/, '').replace(/```$/, '');
+          } else if (cleanContent.startsWith('```')) {
+             cleanContent = cleanContent.replace(/^```/, '').replace(/```$/, '');
+          }
+          
+          return JSON.parse(cleanContent);
         } catch (e) {
           console.error('Failed to parse JSON from Grok:', content);
           throw new Error('Invalid JSON response from Grok');
