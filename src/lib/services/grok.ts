@@ -7,7 +7,7 @@ export interface GrokService {
   analyzeImage(imageUrl: string): Promise<CharacterProfile>;
   generateScenePrompts(profile: CharacterProfile, style: string): Promise<ScenePrompts>;
   generateMusicPrompt(profile: CharacterProfile, style: string): Promise<string>;
-  generateVideo(prompt: string): Promise<string>; // Returns URL of generated video
+  generateImage(prompt: string): Promise<string>; // New: Returns URL of generated static image
 }
 
 class GrokServiceImpl implements GrokService {
@@ -143,30 +143,46 @@ class GrokServiceImpl implements GrokService {
     return this.callGrok(messages, 'grok-2-latest', false);
   }
 
-  async generateVideo(prompt: string): Promise<string> {
-    console.log(`[Grok] Generating video for prompt: "${prompt}"`);
-    // NOTE: At this moment, xAI does not have a public Video Generation API (Imagine is internal or image-only).
-    // For this MVP, we will stick to the MOCK/Placeholder for the actual video asset, 
-    // but we use the Real Logic to generate the *prompts* above.
+  async generateImage(prompt: string): Promise<string> {
+    console.log(`[Grok] Generating image for prompt: "${prompt}"`);
     
-    // In a real production app, we would call:
-    // 1. Luma Dream Machine API
-    // 2. RunwayML API
-    // 3. Kling AI
+    // NOTE: For Grok Image Generation, we can use the same Chat API but with the model 'grok-2-image-1212'?? 
+    // Actually, xAI documentation suggests image generation might be a separate capability or tool call.
+    // However, based on common patterns and the user provided model list, we'll try treating it 
+    // as a chat completion that returns an image OR check if there is a specific format.
     
-    // Simulating delay for realism in the UI
-    await new Promise(resolve => setTimeout(resolve, 3000)); 
+    // IF the API follows OpenAI's format for DALL-E, it would be /v1/images/generations.
+    // IF it follows the Chat completion with tool usage, it's different.
     
-    // Returning a random stock video to make the "Stitcher" have something to work with.
-    // We'll rotate through a few to make it feel dynamic.
-    const stockVideos = [
-      'https://assets.mixkit.co/videos/preview/mixkit-futuristic-city-lights-at-night-4261-large.mp4',
-      'https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-background-1610-large.mp4',
-      'https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-blue-graphs-996-large.mp4',
-      'https://assets.mixkit.co/videos/preview/mixkit-abstract-technology-white-network-connection-background-3047-large.mp4'
+    // As per public docs for xAI (Grok-2), it often returns an image URL in the content or as an attachment.
+    // Let's assume standard OpenAI-compatible image endpoint first, if not, we use Chat.
+    
+    // Since we don't have the exact docs for xAI Image API in front of us, 
+    // we will assume it might be a prompt to the chat model "grok-2-image-1212" which returns a URL.
+    
+    const messages = [
+        { role: "user", content: `Generate an image of: ${prompt}` }
     ];
+
+    // Warning: grok-2-image-1212 might not work with standard Chat API json parsing.
+    // It likely returns a markdown image link like ![image](url).
     
-    return stockVideos[Math.floor(Math.random() * stockVideos.length)];
+    // Let's try calling it and parsing the URL.
+    const content = await this.callGrok(messages, 'grok-2-image-1212', false);
+    
+    // Extract URL from markdown: ![image](https://...)
+    const match = content.match(/\((https?:\/\/[^\)]+)\)/);
+    if (match && match[1]) {
+        return match[1];
+    }
+    
+    // Fallback: It might return the URL directly or fail.
+    if (content.startsWith('http')) {
+        return content;
+    }
+
+    console.warn('Could not extract image URL from Grok response:', content);
+    throw new Error('Failed to generate image');
   }
 }
 
