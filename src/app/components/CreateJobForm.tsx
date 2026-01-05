@@ -113,12 +113,11 @@ export default function CreateJobForm({ onJobCreated }: { onJobCreated: (jobId: 
 
       {/* Hook Text */}
       <div className="space-y-2">
-        <label className="block text-xs font-bold uppercase tracking-widest text-gray-400">Text Overlay</label>
+        <label className="block text-xs font-bold uppercase tracking-widest text-gray-400">Text Overlay (Optional)</label>
         <input
           name="hookText"
           placeholder="WAIT FOR IT..."
           className="w-full bg-transparent border-b border-gray-700 p-2 text-2xl font-black text-white placeholder-gray-800 focus:outline-none focus:border-white transition-colors uppercase text-center"
-          required
         />
       </div>
 

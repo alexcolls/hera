@@ -12,7 +12,7 @@ export interface Job {
   input: {
     imageUrl?: string; // In a real app, we might upload this first and get a URL, or pass base64 (not recommended for large files)
     style: string;
-    hookText: string;
+    hookText?: string;
   };
   result?: JobResult;
   error?: string;
@@ -22,7 +22,7 @@ export interface Job {
 export interface CreateJobRequest {
   imageUrl: string;
   style: string;
-  hookText: string;
+  hookText?: string;
 }
 
 export interface CreateJobResponse {

@@ -11,12 +11,12 @@ export async function POST(req: NextRequest) {
     
     const imageFile = formData.get('imageFile') as File | null;
     const style = formData.get('style') as string;
-    const hookText = formData.get('hookText') as string;
+    const hookText = formData.get('hookText') as string; // Will be empty string or null if not provided
 
     // Basic validation
-    if (!imageFile || !style || !hookText) {
+    if (!imageFile || !style) {
       return NextResponse.json(
-        { error: 'Missing required fields: imageFile, style, hookText' },
+        { error: 'Missing required fields: imageFile, style' },
         { status: 400 }
       );
     }
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       input: {
         imageUrl,
         style,
-        hookText
+        hookText: hookText || undefined
       },
       logs: ['Job created', 'Image uploaded successfully'],
     };

@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 export interface StitchOptions {
   videoClips: string[]; // URLs of video clips
   audioUrl: string;     // URL of audio track
-  hookText: string;
+  hookText?: string;
   outputPath?: string; // Optional local output path
 }
 
@@ -67,13 +67,6 @@ class RealStitcherService implements StitcherService {
         // 3. Draw text on the first few seconds (or overlay on the concatenated stream)
         // 4. Mix audio
         
-        // Note: Constructing a complex filter graph dynamically is error-prone. 
-        // We will simplify: Concat first, then apply effects? No, we need to zoom individual clips usually.
-        // But for MVP, let's try a simpler approach:
-        // Concat all videos -> Apply Zoom (might look weird if across cuts) -> Overlay Text -> Mix Audio.
-        
-        // Better: Apply zoom to each input, then concat.
-        
         const complexFilter: string[] = [];
         const videoOutputMap: string[] = [];
 
@@ -88,15 +81,13 @@ class RealStitcherService implements StitcherService {
         const concatFilter = `${videoOutputMap.join('')}concat=n=${videoPaths.length}:v=1:a=0[vconcat]`;
         complexFilter.push(concatFilter);
 
-        // Text Overlay (Drawtext) - ensuring font file exists is tricky. 
-        // We'll skip specific font path and rely on system default or skip if risky.
-        // Using "text" filter on [vconcat].
-        // "drawtext=text='${options.hookText}':fontcolor=white:fontsize=72:x=(w-text_w)/2:y=(h-text_h)/2:enable='between(t,0,3)'[vfinal]"
-        // We need to escape the hookText.
-        
-        // For robustness, let's just concat for now to ensure it works, 
-        // adding text requires font config.
-        complexFilter.push(`[vconcat]drawtext=text='${options.hookText.replace(/'/g, '')}':fontcolor=white:fontsize=64:x=(w-text_w)/2:y=h-400:enable='between(t,0,3)'[vfinal]`);
+        // Text Overlay (Drawtext) - Only if hookText is provided
+        if (options.hookText) {
+          complexFilter.push(`[vconcat]drawtext=text='${options.hookText.replace(/'/g, '')}':fontcolor=white:fontsize=64:x=(w-text_w)/2:y=h-400:enable='between(t,0,3)'[vfinal]`);
+        } else {
+          // Pass through [vconcat] as [vfinal] if no text
+          complexFilter.push(`[vconcat]null[vfinal]`);
+        }
 
         command
           .complexFilter(complexFilter)
