@@ -13,13 +13,13 @@ const STEPS: JobStatus[] = [
 ];
 
 const LABELS: Record<JobStatus, string> = {
-  pending: 'Queueing...',
-  analyzing: 'Analyzing Image...',
-  generating_scenes: 'Generating 6 Viral Scenes...',
-  composing_music: 'Composing Unique Soundtrack...',
-  stitching: 'Assembling Final Edit...',
-  completed: 'Done!',
-  failed: 'Failed',
+  pending: 'INITIALIZING SYSTEM...',
+  analyzing: 'ANALYZING VISUAL DATA...',
+  generating_scenes: 'EXPANDING NARRATIVE SCENES...',
+  composing_music: 'SYNTHESIZING AUDIO TRACK...',
+  stitching: 'ASSEMBLING FINAL CUT...',
+  completed: 'SEQUENCE COMPLETE',
+  failed: 'SYSTEM FAILURE',
 };
 
 export default function JobStatusDisplay({ jobId }: { jobId: string }) {
@@ -49,61 +49,65 @@ export default function JobStatusDisplay({ jobId }: { jobId: string }) {
     return () => clearInterval(interval);
   }, [jobId]);
 
-  if (!job) return <div className="text-center p-4">Loading job status...</div>;
+  if (!job) return <div className="text-center p-4 font-mono text-xs animate-pulse">ESTABLISHING CONNECTION...</div>;
 
   const currentStepIndex = STEPS.indexOf(job.status as JobStatus);
   const progress = Math.max(5, ((currentStepIndex + 1) / (STEPS.length - 1)) * 100);
 
   return (
-    <div className="space-y-6 bg-gray-900 p-6 rounded-lg border border-gray-800 mt-6">
-      <h2 className="text-xl font-bold">Generation Status</h2>
+    <div className="space-y-8 bg-black p-8 border border-white/20 mt-6 animate-fade-in">
+      <h2 className="text-sm font-bold tracking-widest uppercase mb-4">Status Log // {jobId.slice(0, 8)}</h2>
       
       {/* Progress Bar */}
-      <div className="w-full bg-gray-800 rounded-full h-4 overflow-hidden">
+      <div className="w-full bg-gray-900 h-2">
         <div 
-          className="bg-blue-500 h-full transition-all duration-500 ease-out"
+          className="bg-white h-full transition-all duration-300 ease-linear"
           style={{ width: `${job.status === 'completed' ? 100 : progress}%` }}
         />
       </div>
 
-      <div className="flex justify-between text-sm text-gray-400">
-        <span>{LABELS[job.status as JobStatus] || job.status}</span>
+      <div className="flex justify-between text-xs font-mono uppercase tracking-wider text-gray-400">
+        <span className="text-white">{LABELS[job.status as JobStatus] || job.status}</span>
         <span>{job.status === 'completed' ? '100%' : `${Math.round(progress)}%`}</span>
       </div>
 
       {/* Logs */}
-      <div className="bg-black/50 p-4 rounded h-48 overflow-y-auto font-mono text-xs text-green-400 border border-gray-800">
+      <div className="bg-black p-4 h-48 overflow-y-auto font-mono text-xs text-gray-300 border border-gray-800 leading-relaxed">
         {job.logs.map((log, i) => (
-          <div key={i}>&gt; {log}</div>
+          <div key={i} className="mb-1">
+            <span className="text-gray-600 mr-2">[{String(i).padStart(2, '0')}]</span>
+            {log}
+          </div>
         ))}
+        {job.status === 'pending' && <div className="animate-pulse">_</div>}
       </div>
 
       {/* Result */}
       {job.status === 'completed' && job.result?.videoUrl && (
-        <div className="mt-4 animate-fade-in">
-          <h3 className="text-lg font-bold mb-2 text-green-400">Video Ready!</h3>
+        <div className="mt-8 space-y-4 animate-fade-in">
+          <h3 className="text-sm font-bold uppercase tracking-widest text-white border-b border-white/20 pb-2">Output Generated</h3>
           <video 
             src={job.result.videoUrl} 
             controls 
-            className="w-full rounded border border-gray-700 aspect-[9/16] max-w-sm mx-auto"
+            className="w-full border border-gray-800 aspect-[9/16] max-w-sm mx-auto"
             autoPlay
             loop
           />
-          <div className="mt-4 flex gap-2 justify-center">
+          <div className="flex justify-center pt-4">
             <a 
               href={job.result.videoUrl} 
               download 
-              className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded font-bold"
+              className="bg-white text-black hover:bg-gray-200 px-8 py-3 text-sm font-bold uppercase tracking-widest transition-colors"
             >
-              Download Video
+              Download Asset
             </a>
           </div>
         </div>
       )}
 
       {job.status === 'failed' && (
-        <div className="text-red-500 bg-red-900/20 p-4 rounded border border-red-900">
-          Error: {job.error}
+        <div className="text-red-500 border border-red-900/50 p-4 font-mono text-xs uppercase">
+          CRITICAL ERROR: {job.error}
         </div>
       )}
     </div>

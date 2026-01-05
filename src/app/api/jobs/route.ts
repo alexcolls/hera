@@ -1,40 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { CreateJobRequest, Job } from '@/lib/types/job';
+import { Job } from '@/lib/types/job';
 import { jobStore } from '@/lib/services/jobStore';
 import { v4 as uuidv4 } from 'uuid';
 import { startWorkflow } from '@/lib/services/workflow';
+import { storageService } from '@/lib/services/storage';
 
 export async function POST(req: NextRequest) {
   try {
-    const body: CreateJobRequest = await req.json();
+    const formData = await req.formData();
     
+    const imageFile = formData.get('imageFile') as File | null;
+    const style = formData.get('style') as string;
+    const hookText = formData.get('hookText') as string;
+
     // Basic validation
-    if (!body.imageUrl || !body.style) {
+    if (!imageFile || !style || !hookText) {
       return NextResponse.json(
-        { error: 'Missing required fields: imageUrl, style' },
+        { error: 'Missing required fields: imageFile, style, hookText' },
         { status: 400 }
       );
     }
+
+    // Upload the file
+    // For MVP with MockStorage, this works. 
+    // For real S3, we would convert File to Buffer or stream it.
+    const buffer = Buffer.from(await imageFile.arrayBuffer());
+    const imageUrl = await storageService.uploadFile(buffer, `upload_${uuidv4()}_${imageFile.name}`, imageFile.type);
 
     const jobId = uuidv4();
     const newJob: Job = {
       id: jobId,
       status: 'pending',
       createdAt: Date.now(),
-      input: body,
-      logs: ['Job created'],
+      input: {
+        imageUrl,
+        style,
+        hookText
+      },
+      logs: ['Job created', 'Image uploaded successfully'],
     };
 
-    await jobStore.createJob(newJob);
+    jobStore.createJob(newJob);
 
     // Trigger the workflow asynchronously
     startWorkflow(jobId).catch(console.error);
 
     return NextResponse.json({ jobId });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating job:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      { error: error.message || 'Internal Server Error' },
       { status: 500 }
     );
   }
