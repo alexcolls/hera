@@ -1,7 +1,8 @@
 import { CharacterProfile, ScenePrompts } from '../types/grok';
 
 const GROK_API_KEY = process.env.NEXT_PUBLIC_GROK_API_KEY;
-const GROK_API_URL = 'https://api.x.ai/v1/chat/completions';
+const GROK_CHAT_URL = 'https://api.x.ai/v1/chat/completions';
+const GROK_IMAGE_URL = 'https://api.x.ai/v1/images/generations'; // Correct endpoint for image generation
 
 export interface GrokService {
   analyzeImage(imageUrl: string): Promise<CharacterProfile>;
@@ -12,7 +13,7 @@ export interface GrokService {
 
 class GrokServiceImpl implements GrokService {
   
-  private async callGrok(messages: any[], model: string = 'grok-2-latest', jsonMode: boolean = false): Promise<any> {
+  private async callGrokChat(messages: any[], model: string = 'grok-2-latest', jsonMode: boolean = false): Promise<any> {
     if (!GROK_API_KEY) {
       console.warn('GROK_API_KEY not found');
       throw new Error('GROK_API_KEY is missing');
@@ -30,7 +31,7 @@ class GrokServiceImpl implements GrokService {
     }
 
     try {
-      const response = await fetch(GROK_API_URL, {
+      const response = await fetch(GROK_CHAT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -67,7 +68,7 @@ class GrokServiceImpl implements GrokService {
       
       return content;
     } catch (error) {
-      console.error('Call to Grok failed:', error);
+      console.error('Call to Grok Chat failed:', error);
       throw error;
     }
   }
@@ -90,7 +91,7 @@ class GrokServiceImpl implements GrokService {
     ];
 
     // Using grok-2-vision-1212 for vision capabilities
-    return this.callGrok(messages, 'grok-2-vision-1212', true);
+    return this.callGrokChat(messages, 'grok-2-vision-1212', true);
   }
 
   async generateScenePrompts(profile: CharacterProfile, style: string): Promise<ScenePrompts> {
@@ -117,7 +118,7 @@ class GrokServiceImpl implements GrokService {
       }
     ];
 
-    return this.callGrok(messages, 'grok-2-latest', true);
+    return this.callGrokChat(messages, 'grok-2-latest', true);
   }
 
   async generateMusicPrompt(profile: CharacterProfile, style: string): Promise<string> {
@@ -140,49 +141,51 @@ class GrokServiceImpl implements GrokService {
       }
     ];
 
-    return this.callGrok(messages, 'grok-2-latest', false);
+    return this.callGrokChat(messages, 'grok-2-latest', false);
   }
 
   async generateImage(prompt: string): Promise<string> {
     console.log(`[Grok] Generating image for prompt: "${prompt}"`);
     
-    // NOTE: For Grok Image Generation, we can use the same Chat API but with the model 'grok-2-image-1212'?? 
-    // Actually, xAI documentation suggests image generation might be a separate capability or tool call.
-    // However, based on common patterns and the user provided model list, we'll try treating it 
-    // as a chat completion that returns an image OR check if there is a specific format.
-    
-    // IF the API follows OpenAI's format for DALL-E, it would be /v1/images/generations.
-    // IF it follows the Chat completion with tool usage, it's different.
-    
-    // As per public docs for xAI (Grok-2), it often returns an image URL in the content or as an attachment.
-    // Let's assume standard OpenAI-compatible image endpoint first, if not, we use Chat.
-    
-    // Since we don't have the exact docs for xAI Image API in front of us, 
-    // we will assume it might be a prompt to the chat model "grok-2-image-1212" which returns a URL.
-    
-    const messages = [
-        { role: "user", content: `Generate an image of: ${prompt}` }
-    ];
-
-    // Warning: grok-2-image-1212 might not work with standard Chat API json parsing.
-    // It likely returns a markdown image link like ![image](url).
-    
-    // Let's try calling it and parsing the URL.
-    const content = await this.callGrok(messages, 'grok-2-image-1212', false);
-    
-    // Extract URL from markdown: ![image](https://...)
-    const match = content.match(/\((https?:\/\/[^\)]+)\)/);
-    if (match && match[1]) {
-        return match[1];
-    }
-    
-    // Fallback: It might return the URL directly or fail.
-    if (content.startsWith('http')) {
-        return content;
+    if (!GROK_API_KEY) {
+        throw new Error('GROK_API_KEY is missing');
     }
 
-    console.warn('Could not extract image URL from Grok response:', content);
-    throw new Error('Failed to generate image');
+    try {
+        const response = await fetch(GROK_IMAGE_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${GROK_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: 'grok-2-image-1212',
+                prompt: prompt,
+                n: 1,
+                size: '1024x1024', 
+                // response_format: 'url' // Removed to check if this was the invalid arg
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            // LOG THE FULL ERROR TEXT
+            console.error(`Grok Image API Error (${response.status}):`, errorText);
+            throw new Error(`Grok Image API Error: ${response.statusText} - ${errorText}`);
+        }
+
+        const data = await response.json();
+        // Assuming OpenAI format: data.data[0].url
+        if (data.data && data.data[0] && data.data[0].url) {
+            return data.data[0].url;
+        }
+        
+        throw new Error('No image URL in response');
+
+    } catch (error) {
+        console.error('Call to Grok Image API failed:', error);
+        throw error;
+    }
   }
 }
 
