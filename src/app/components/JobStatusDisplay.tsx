@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { Job, JobStatus } from '@/lib/types/job';
+import StoryboardReview from './StoryboardReview';
 
 const STEPS: JobStatus[] = [
   'pending',
   'analyzing',
-  'generating_scenes',
-  'composing_music',
+  'generating_storyboard',
+  'waiting_for_approval',
+  'generating_video',
   'stitching',
   'completed'
 ];
@@ -15,8 +17,9 @@ const STEPS: JobStatus[] = [
 const LABELS: Record<JobStatus, string> = {
   pending: 'INITIALIZING SYSTEM...',
   analyzing: 'ANALYZING VISUAL DATA...',
-  generating_scenes: 'EXPANDING NARRATIVE SCENES...',
-  composing_music: 'SYNTHESIZING AUDIO TRACK...',
+  generating_storyboard: 'GENERATING STORYBOARD FRAMES...',
+  waiting_for_approval: 'AWAITING USER CONFIRMATION',
+  generating_video: 'SYNTHESIZING MOTION VIDEO...',
   stitching: 'ASSEMBLING FINAL CUT...',
   completed: 'SEQUENCE COMPLETE',
   failed: 'SYSTEM FAILURE',
@@ -81,6 +84,18 @@ export default function JobStatusDisplay({ jobId }: { jobId: string }) {
         ))}
         {job.status === 'pending' && <div className="animate-pulse">_</div>}
       </div>
+
+      {/* Storyboard Approval Mode */}
+      {job.status === 'waiting_for_approval' && job.storyboard && (
+        <div className="mt-8 border-t border-white/20 pt-8">
+            <StoryboardReview 
+                jobId={job.id} 
+                scenes={job.storyboard} 
+                onApprove={() => setJob({ ...job, status: 'generating_video' })} // Optimistic update
+                onRegenerateScene={(sceneId) => console.log('Regenerate', sceneId)}
+            />
+        </div>
+      )}
 
       {/* Result */}
       {job.status === 'completed' && job.result?.videoUrl && (

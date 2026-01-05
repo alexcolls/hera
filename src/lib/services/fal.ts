@@ -24,16 +24,18 @@ class FalVideoServiceImpl implements FalVideoService {
   async generateVideo(prompt: string): Promise<string> {
     console.log(`[Fal.ai] Generating video for prompt: "${prompt}"`);
 
-    if (!process.env.NEXT_PUBLIC_FAL_KEY) {
-      console.warn('NEXT_PUBLIC_FAL_KEY not found. Using Mock Video.');
+    // Force Mock Video for now (User request)
+    // if (!process.env.NEXT_PUBLIC_FAL_KEY) {
+      console.warn('Fal.ai temporarily disabled. Using Mock Video.');
       // Fallback to mixkit
       const stockVideos = [
         'https://assets.mixkit.co/videos/preview/mixkit-futuristic-city-lights-at-night-4261-large.mp4',
         'https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-background-1610-large.mp4'
       ];
       return stockVideos[Math.floor(Math.random() * stockVideos.length)];
-    }
+    // }
 
+    /*
     try {
       // Using Minimax model via Fal.ai
       const result: any = await fal.subscribe('fal-ai/minimax/video-01', {
@@ -59,6 +61,7 @@ class FalVideoServiceImpl implements FalVideoService {
       console.error('Fal.ai generation failed:', error);
       throw error;
     }
+    */
   }
 }
 
