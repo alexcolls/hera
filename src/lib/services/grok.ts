@@ -2,7 +2,7 @@ import { CharacterProfile, ScenePrompts } from '../types/grok';
 
 const GROK_API_KEY = process.env.NEXT_PUBLIC_GROK_API_KEY;
 const GROK_CHAT_URL = 'https://api.x.ai/v1/chat/completions';
-const GROK_IMAGE_URL = 'https://api.x.ai/v1/images/generations'; // Correct endpoint for image generation
+const GROK_IMAGE_URL = 'https://api.x.ai/v1/images/generations';
 
 export interface GrokService {
   analyzeImage(imageUrl: string): Promise<CharacterProfile>;
@@ -51,7 +51,6 @@ class GrokServiceImpl implements GrokService {
       
       if (jsonMode) {
         try {
-          // Clean the content of markdown code blocks if present
           let cleanContent = content.trim();
           if (cleanContent.startsWith('```json')) {
             cleanContent = cleanContent.replace(/^```json/, '').replace(/```$/, '');
@@ -90,7 +89,6 @@ class GrokServiceImpl implements GrokService {
       }
     ];
 
-    // Using grok-2-vision-1212 for vision capabilities
     return this.callGrokChat(messages, 'grok-2-vision-1212', true);
   }
 
@@ -162,20 +160,19 @@ class GrokServiceImpl implements GrokService {
                 model: 'grok-2-image-1212',
                 prompt: prompt,
                 n: 1,
-                size: '1024x1024', 
-                // response_format: 'url' // Removed to check if this was the invalid arg
+                // size: '1024x1024', // Removed: Not supported by grok-2-image-1212
+                response_format: 'url' 
             })
         });
 
         if (!response.ok) {
             const errorText = await response.text();
-            // LOG THE FULL ERROR TEXT
             console.error(`Grok Image API Error (${response.status}):`, errorText);
             throw new Error(`Grok Image API Error: ${response.statusText} - ${errorText}`);
         }
 
         const data = await response.json();
-        // Assuming OpenAI format: data.data[0].url
+        
         if (data.data && data.data[0] && data.data[0].url) {
             return data.data[0].url;
         }
