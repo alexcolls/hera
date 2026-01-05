@@ -1,6 +1,6 @@
 import { CharacterProfile, ScenePrompts } from '../types/grok';
 
-const GROK_API_KEY = process.env.GROK_API_KEY;
+const GROK_API_KEY = process.env.NEXT_PUBLIC_GROK_API_KEY;
 
 export interface GrokService {
   analyzeImage(imageUrl: string): Promise<CharacterProfile>;

@@ -1,3 +1,5 @@
+const SUNO_API_KEY = process.env.NEXT_PUBLIC_SUNO_API_KEY;
+
 export interface SunoService {
   generateMusic(prompt: string): Promise<string>; // Returns URL of generated audio
 }
