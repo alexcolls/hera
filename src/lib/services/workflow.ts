@@ -5,64 +5,62 @@ import { stitcherService } from './stitcher';
 
 // This function orchestrates the entire AI video creation process
 export async function startWorkflow(jobId: string) {
-  const job = jobStore.getJob(jobId);
+  // Check if job exists (async now due to Redis)
+  const job = await jobStore.getJob(jobId);
   if (!job) return;
 
   try {
     // 1. Analyze Image
-    jobStore.updateJob(jobId, { status: 'analyzing' });
-    jobStore.addLog(jobId, 'Starting image analysis with Grok Vision...');
+    await jobStore.updateJob(jobId, { status: 'analyzing' });
+    await jobStore.addLog(jobId, 'Starting image analysis with Grok Vision...');
     
-    // Use the actual service (mocked internally)
-    const profile = await grokService.analyzeImage(job.input.imageUrl || 'placeholder_image');
-    jobStore.addLog(jobId, `Analysis complete: ${profile.perceived_vibe}`);
+    const profile = await grokService.analyzeImage(job.input.imageUrl || 'placeholder');
+    await jobStore.addLog(jobId, `Analysis complete: ${profile.vibe}`);
 
-    // 2. Generate Scenes & Music Prompts
-    jobStore.updateJob(jobId, { status: 'generating_scenes' });
-    jobStore.addLog(jobId, 'Expanding prompts and planning scenes...');
+    // 2. Generate Script (Scenes + Music Prompt)
+    await jobStore.updateJob(jobId, { status: 'generating_scenes' });
+    await jobStore.addLog(jobId, 'Directing viral video script...');
     
-    const scenePrompts = await grokService.generateScenePrompts(profile, job.input.style);
-    const musicPrompt = await grokService.generateMusicPrompt(profile, job.input.style);
-    
-    jobStore.addLog(jobId, `Generated ${scenePrompts.scenes.length} scene prompts.`);
+    const script = await grokService.generateDirectorScript(profile, job.input.style);
+    await jobStore.addLog(jobId, `Script generated with ${script.scenes.length} scenes.`);
 
-    // 3. Generate Assets (Parallel: Video & Audio)
-    jobStore.updateJob(jobId, { status: 'composing_music' }); 
-    jobStore.addLog(jobId, 'Generating video clips and music...');
+    // 3. Generate Assets (Parallel: Images & Audio)
+    await jobStore.updateJob(jobId, { status: 'composing_music' }); 
+    await jobStore.addLog(jobId, 'Generating high-res assets (6 Images + Suno Audio)...');
     
-    // Parallel execution
-    const [videoUrls, audioUrl] = await Promise.all([
-      // Video generation (6 clips in parallel)
-      Promise.all(scenePrompts.scenes.map(prompt => grokService.generateVideo(prompt))),
+    const [imageUrls, audioUrl] = await Promise.all([
+      // Image generation (6 images in parallel)
+      Promise.all(script.scenes.map(prompt => grokService.generateImage(prompt))),
       // Audio generation
-      sunoService.generateMusic(musicPrompt)
+      sunoService.generateMusic(script.suno_prompt)
     ]);
 
-    jobStore.addLog(jobId, 'Assets generated successfully.');
+    await jobStore.addLog(jobId, 'Assets generated successfully.');
 
     // 4. Stitching
-    jobStore.updateJob(jobId, { status: 'stitching' });
-    jobStore.addLog(jobId, 'Stitching clips and overlaying audio...');
+    await jobStore.updateJob(jobId, { status: 'stitching' });
+    await jobStore.addLog(jobId, 'Stitching images with Ken Burns effect and overlaying audio...');
     
     const finalVideoUrl = await stitcherService.stitchVideo({
-      videoClips: videoUrls,
+      imageUrls: imageUrls,
       audioUrl: audioUrl,
-      hookText: job.input.hookText
+      overlays: script.overlays,
+      outputPath: undefined
     });
 
     // 5. Complete
-    jobStore.updateJob(jobId, { 
+    await jobStore.updateJob(jobId, { 
       status: 'completed',
       result: {
         videoUrl: finalVideoUrl,
-        imagesUrl: undefined // TODO: Zip raw images/videos if needed
+        // TODO: Zip logic for imagesUrl
       }
     });
-    jobStore.addLog(jobId, 'Job completed successfully!');
+    await jobStore.addLog(jobId, 'Job completed successfully! Video is ready.');
 
   } catch (error: any) {
     console.error(`Job ${jobId} failed:`, error);
-    jobStore.updateJob(jobId, { status: 'failed', error: error.message || 'Unknown error' });
-    jobStore.addLog(jobId, `Job failed: ${error.message}`);
+    await jobStore.updateJob(jobId, { status: 'failed', error: error.message || 'Unknown error' });
+    await jobStore.addLog(jobId, `Job failed: ${error.message}`);
   }
 }
