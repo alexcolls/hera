@@ -1,0 +1,40 @@
+Hera Inc. — Proprietary Software
+Commercial License Required
+
+Copyright (c) 2026 Hera Inc.
+All rights reserved.
+
+IMPORTANT: NO LICENSE GRANTED
+This repository and all associated source code, object code, assets, and documentation
+(collectively, the "Software") are proprietary and are owned by Hera Inc. No license or
+other rights are granted under any intellectual property rights by publishing, viewing,
+or using this repository, except as expressly provided in a separate written agreement
+signed by Hera Inc.
+
+PERMITTED USE
+Unless you have a separate written commercial license agreement with Hera Inc., you may
+not do any of the following (in whole or in part):
+  - use the Software for any purpose;
+  - copy, reproduce, or distribute the Software;
+  - modify, adapt, translate, or create derivative works of the Software;
+  - publish, sell, sublicense, rent, lease, lend, or otherwise make the Software
+    available to any third party;
+  - reverse engineer, decompile, or disassemble the Software, except to the extent
+    such restriction is prohibited by applicable law.
+
+HOW TO OBTAIN A COMMERCIAL LICENSE
+To request licensing terms, contact the owner using the contact details on:
+https://github.com/alexcolls
+
+THIRD-PARTY SOFTWARE
+The Software may include or depend on third-party components that are provided under
+their own license terms. Those third-party components are not licensed under this
+license and remain subject to their respective licenses.
+
+DISCLAIMER OF WARRANTIES
+THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL HERA INC. BE LIABLE FOR ANY
+CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE,
+ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.

@@ -1,4 +1,4 @@
-// NEXT_PUBLIC_FAL_KEY=... (Add this to your .env.local)
+// NEXT_PUBLIC_FAL_API_KEY=... (Add this to your .env.local)
 
 import * as fal from '@fal-ai/serverless-client';
 
@@ -10,12 +10,12 @@ export interface FalService {
 class FalServiceImpl implements FalService {
   
   constructor() {
-    // The @fal-ai/serverless-client automatically uses NEXT_PUBLIC_FAL_KEY
+    // The @fal-ai/serverless-client automatically uses NEXT_PUBLIC_FAL_API_KEY
     // But we can explicitely set it if needed
-    if (process.env.NEXT_PUBLIC_FAL_KEY) {
+    if (process.env.NEXT_PUBLIC_FAL_API_KEY) {
         try {
             fal.config({
-                credentials: process.env.NEXT_PUBLIC_FAL_KEY
+                credentials: process.env.NEXT_PUBLIC_FAL_API_KEY
             });
         } catch (e) {
             console.error('Failed to configure Fal client:', e);
@@ -26,7 +26,7 @@ class FalServiceImpl implements FalService {
   async generateImage(prompt: string, referenceImageUrl?: string, modelId?: string): Promise<string> {
     console.log(`[Fal.ai] Generating image for prompt: "${prompt}"`);
 
-    if (!process.env.NEXT_PUBLIC_FAL_KEY) {
+    if (!process.env.NEXT_PUBLIC_FAL_API_KEY) {
         console.warn('FAL_KEY not found. Using Mock Image.');
         return 'https://via.placeholder.com/1024x1792.png?text=Fal+Key+Missing';
     }
@@ -69,7 +69,7 @@ class FalServiceImpl implements FalService {
   async generateVideo(prompt: string, imageUrl?: string, modelId?: string): Promise<string> {
     console.log(`[Fal.ai] Generating video for prompt: "${prompt}" (Image: ${imageUrl ? 'Yes' : 'No'})`);
 
-    if (!process.env.NEXT_PUBLIC_FAL_KEY) {
+    if (!process.env.NEXT_PUBLIC_FAL_API_KEY) {
         console.warn('FAL_KEY not found. Using Mock Video.');
         const stockVideos = [
             'https://assets.mixkit.co/videos/preview/mixkit-futuristic-city-lights-at-night-4261-large.mp4',

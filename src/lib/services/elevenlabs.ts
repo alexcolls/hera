@@ -1,6 +1,6 @@
-// NEXT_PUBLIC_ELEVENLABS_KEY=...
+// NEXT_PUBLIC_ELEVENLABS_API_KEY=...
 
-const ELEVENLABS_API_KEY = process.env.NEXT_PUBLIC_ELEVENLABS_KEY;
+const ELEVENLABS_API_KEY = process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY;
 const ELEVENLABS_API_URL = 'https://api.elevenlabs.io/v1';
 
 // Default voice ID (Rachel - American, Professional)
