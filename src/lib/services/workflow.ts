@@ -2,97 +2,205 @@ import { jobStore } from './jobStore';
 import { grokService } from './grok';
 import { sunoService } from './suno';
 import { stitcherService } from './stitcher';
-import { falVideoService } from './fal';
-import { Scene } from '../types/job';
+import { falService } from './fal';
+import { elevenLabsService } from './elevenlabs';
+import { Scene, JobStatus } from '../types/job';
 import { v4 as uuidv4 } from 'uuid';
 
-export async function startWorkflow(jobId: string, resume: boolean = false) {
+export async function startWorkflow(jobId: string, resumeStatus?: JobStatus) {
   const job = await jobStore.getJob(jobId);
   if (!job) return;
+  const language = job.input?.language ?? 'en';
+  const models = job.input?.models ?? {};
+  const addI18nLog = (key: string, vars?: Record<string, string | number>) =>
+    jobStore.addLog(jobId, { key, vars, ts: Date.now() });
 
   try {
-    // === PHASE 1: ANALYSIS & STORYBOARD ===
-    if (!resume) {
+    // === PHASE 1: ANALYSIS & STORYBOARD (Start) ===
+    if (!resumeStatus || resumeStatus === 'pending') {
         // 1. Analyze Image
         await jobStore.updateJob(jobId, { status: 'analyzing' });
-        await jobStore.addLog(jobId, 'Starting image analysis with Grok Vision...');
+        await addI18nLog('log.startingImageAnalysis');
         
-        const profile = await grokService.analyzeImage(job.input.imageUrl || 'placeholder_image');
-        await jobStore.addLog(jobId, `Analysis complete: ${profile.perceived_vibe}`);
+        const profile = await grokService.analyzeImage(job.input.imageUrl || 'placeholder_image', models.grokVisionModel);
+        await addI18nLog('log.analysisComplete', { vibe: profile.perceived_vibe });
 
-        // 2. Generate Prompts
+        // 2. Generate Prompts (Story)
         await jobStore.updateJob(jobId, { status: 'generating_storyboard' });
-        await jobStore.addLog(jobId, 'Generating scene prompts...');
+        await addI18nLog('log.generatingStoryAndPrompts');
         
-        const scenePrompts = await grokService.generateScenePrompts(profile, job.input.style);
-        const musicPrompt = await grokService.generateMusicPrompt(profile, job.input.style);
-
-        // 3. Generate Static Images (Storyboard)
-        await jobStore.addLog(jobId, 'Generating storyboard images (Grok Image)...');
-        
-        const scenes: Scene[] = await Promise.all(
-            scenePrompts.scenes.map(async (prompt) => {
-                const imageUrl = await grokService.generateImage(prompt);
-                return {
-                    id: uuidv4(),
-                    prompt,
-                    imageUrl,
-                    status: 'image_ready'
-                };
-            })
+        const scenePrompts = await grokService.generateScenePrompts(
+            profile, 
+            job.input.style, 
+            job.input.genre, 
+            job.input.sceneCount,
+            language,
+            models.grokChatModel
         );
 
-        // Save Storyboard and PAUSE
-        await jobStore.updateJob(jobId, { 
-            status: 'waiting_for_approval', 
-            storyboard: scenes,
-            musicPrompt
+        // Pre-generate audio prompts/scripts here to save time later, or do it in parallel
+        let musicPrompt = undefined;
+        let narrativePrompt = undefined;
+
+        if (job.input.audioType === 'music') {
+             musicPrompt = await grokService.generateMusicPrompt(profile, job.input.style, models.grokChatModel);
+        } else {
+             // Generate narrative script based on the scene prompts
+             narrativePrompt = await grokService.generateNarrative(
+                 profile, 
+                 job.input.genre, 
+                 job.input.sceneCount, 
+                 scenePrompts.scenes_en,
+                 language,
+                 models.grokChatModel
+            );
+        }
+
+        // 3. Generate Static Images (Storyboard)
+        await addI18nLog('log.generatingStoryboardImages');
+        
+        const scenes: Scene[] = scenePrompts.scenes_en.map((promptEn, idx) => {
+            // User requested to remove physical description as we use Image Reference (PuLID)
+            // Just use the scene action prompt directly.
+            const localized = scenePrompts.scenes_localized?.[idx];
+            return {
+                id: uuidv4(),
+                prompt: language === 'en'
+                  ? promptEn
+                  : `${localized || promptEn}\n(English guidance: ${promptEn})`,
+                localizedPrompt: localized,
+                status: 'pending'
+            };
         });
-        await jobStore.addLog(jobId, 'Storyboard ready. Waiting for user approval.');
-        return; // STOP HERE
+
+        // Save initial empty storyboard
+        await jobStore.updateJob(jobId, { 
+            storyboard: scenes,
+            musicPrompt,
+            narrativePrompt
+        });
+
+        // Generate images sequentially (1-by-1) so logs match user expectations
+        for (let idx = 0; idx < scenes.length; idx++) {
+            await addI18nLog('log.generatingImage', { index: idx + 1, total: scenes.length });
+            try {
+                scenes[idx].status = 'generating_image';
+                await jobStore.updateJob(jobId, { storyboard: scenes });
+                
+                let imageUrl: string;
+                if (job.input.imageUrl) {
+                    imageUrl = await falService.generateImage(scenes[idx].prompt, job.input.imageUrl, models.falImageModel);
+                } else {
+                    imageUrl = await grokService.generateImage(scenes[idx].prompt, models.grokImageModel);
+                }
+                
+                scenes[idx].imageUrl = imageUrl;
+                scenes[idx].status = 'image_ready';
+            } catch (err) {
+                console.error(`Failed to generate image for scene ${idx}:`, err);
+                scenes[idx].status = 'failed';
+            }
+
+            await jobStore.updateJob(jobId, { storyboard: scenes });
+        }
+
+        // STOP HERE for User Approval
+        await jobStore.updateJob(jobId, { 
+            status: 'waiting_for_storyboard_approval', 
+            storyboard: scenes 
+        });
+        await addI18nLog('log.storyboardReadyWaitingApproval');
+        return;
     }
 
-    // === PHASE 2: VIDEO & AUDIO (RESUMED) ===
-    if (job.status === 'generating_video' || resume) {
-        // Check if we have scenes
+    // === PHASE 2: VIDEO GENERATION (Resumed after Storyboard Approval) ===
+    if (resumeStatus === 'generating_video') {
         if (!job.storyboard || job.storyboard.length === 0) {
             throw new Error('No storyboard found to animate');
         }
 
         await jobStore.updateJob(jobId, { status: 'generating_video' });
-        await jobStore.addLog(jobId, 'Generating video clips from storyboard (Fal.ai I2V)...');
+        await addI18nLog('log.generatingVideoClipsFromStoryboard');
 
-        // Parallel Video Generation (Image-to-Video)
-        // Note: falVideoService.generateVideo needs to be updated to support Image input if possible, 
-        // OR we just use the prompt. 
-        // User requested: "show them in the UI process so the user can confirm... before sending it to the video generator"
-        // Ideally we use Image-to-Video. 
-        // Fal.ai Minimax supports image-to-video? 
-        // Minimax is typically T2V. Kling/Runway are I2V.
-        // For MVP, if Minimax only supports T2V, we pass the prompt. 
-        // BUT user wanted consistency. 
-        // Let's assume for now we just pass the PROMPT to Minimax (T2V) because integrating Kling (I2V) might need different config.
-        // OR if the user is ok with T2V for now, we use the prompt.
-        // Wait, earlier plan was "Image-to-Video". 
-        // Let's check FalService. For now passing prompt. 
-        // TODO: Upgrade FalService to I2V to use the image.
+        // In a real app, we would use Image-to-Video (I2V) here using the approved imageUrls.
+        // Fal.ai Minimax/Kling/Runway support this.
+        // For this MVP, we are still using Text-to-Video via Fal (Minimax/Haiper) OR purely T2V if strict I2V isn't set up.
+        // BUT, since we used PuLID for images, to keep consistency we SHOULD use I2V.
+        // FalService.generateVideo currently does T2V. 
+        // We need to update FalService to support I2V or just use T2V for now.
+        // Let's assume T2V for simplicity but using the detailed prompts we have.
         
-        const videoUrls = await Promise.all(
-            job.storyboard.map(scene => falVideoService.generateVideo(scene.prompt))
-        );
+        // Generate videos sequentially (1-by-1) so logs match user expectations and we persist per-scene progress.
+        const updatedScenes = [...job.storyboard];
+        for (let idx = 0; idx < updatedScenes.length; idx++) {
+            await addI18nLog('log.generatingVideo', { index: idx + 1, total: updatedScenes.length });
+            const scene = updatedScenes[idx];
+            try {
+                scene.status = 'generating_video';
+                await jobStore.updateJob(jobId, { storyboard: updatedScenes });
 
-        // Audio Generation
-        await jobStore.addLog(jobId, 'Composing music...');
-        const audioUrl = await sunoService.generateMusic(job.musicPrompt || 'upbeat viral music');
+                // Use Kling Image-to-Video if we have a generated image for the scene.
+                const videoUrl = await falService.generateVideo(scene.prompt, scene.imageUrl, models.falVideoModel);
 
-        // === PHASE 3: STITCHING ===
+                scene.videoUrl = videoUrl;
+                scene.status = 'video_ready';
+            } catch (e) {
+                console.error(`Failed video for scene ${idx}`, e);
+                scene.status = 'failed';
+            }
+
+            await jobStore.updateJob(jobId, { storyboard: updatedScenes });
+        }
+
+        // Save Videos and STOP for Approval
+        await jobStore.updateJob(jobId, { 
+            status: 'waiting_for_video_approval',
+            storyboard: updatedScenes
+        });
+        await addI18nLog('log.videosGeneratedWaitingApproval');
+        return;
+    }
+
+    // === PHASE 3: AUDIO & STITCHING (Resumed after Video Approval) ===
+    if (resumeStatus === 'generating_audio' || resumeStatus === 'stitching') {
+        
+        // Generate Audio
+        await jobStore.updateJob(jobId, { status: 'generating_audio' });
+        let audioUrl: string = '';
+
+        if (job.input.audioType === 'narrative' && job.narrativePrompt) {
+            await addI18nLog('log.generatingVoiceover');
+            audioUrl = await elevenLabsService.generateSpeech(
+              job.narrativePrompt,
+              language,
+              models.elevenlabsModelId,
+              models.elevenlabsVoiceId
+            );
+        } else if (job.input.audioType === 'music' || job.musicPrompt) {
+            await addI18nLog('log.composingMusic');
+            audioUrl = await sunoService.generateMusic(job.musicPrompt || 'viral background music', models.sunoModel);
+        } else {
+             // Fallback
+             audioUrl = await sunoService.generateMusic('upbeat background music', models.sunoModel);
+        }
+
+        // Stitching
         await jobStore.updateJob(jobId, { status: 'stitching' });
-        await jobStore.addLog(jobId, 'Stitching final cut...');
+        await addI18nLog('log.stitchingFinalCut');
+
+        // Collect valid video URLs
+        const videoUrls = job.storyboard
+            ?.filter(s => s.videoUrl && s.status === 'video_ready')
+            .map(s => s.videoUrl!) || [];
+
+        if (videoUrls.length === 0) {
+            throw new Error('No valid video clips to stitch');
+        }
 
         const finalVideoUrl = await stitcherService.stitchVideo({
             videoClips: videoUrls,
             audioUrl: audioUrl,
-            hookText: job.input.hookText
+            // hookText deprecated
         });
 
         await jobStore.updateJob(jobId, { 
@@ -102,12 +210,13 @@ export async function startWorkflow(jobId: string, resume: boolean = false) {
                 imagesUrl: undefined
             }
         });
-        await jobStore.addLog(jobId, 'Job completed successfully!');
+        await addI18nLog('log.jobCompletedSuccessfully');
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`Job ${jobId} failed:`, error);
-    await jobStore.updateJob(jobId, { status: 'failed', error: error.message || 'Unknown error' });
-    await jobStore.addLog(jobId, `Job failed: ${error.message}`);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    await jobStore.updateJob(jobId, { status: 'failed', error: message });
+    await addI18nLog('log.jobFailed', { error: message });
   }
 }

@@ -5,5 +5,6 @@ export interface CharacterProfile {
 }
 
 export interface ScenePrompts {
-  scenes: string[]; // Array of 6 prompts
+  scenes_en: string[]; // Array of prompts (English, model-friendly)
+  scenes_localized: string[]; // Same prompts localized to target language
 }

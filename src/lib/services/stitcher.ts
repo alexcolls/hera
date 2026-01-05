@@ -41,6 +41,7 @@ class RealStitcherService implements StitcherService {
       // if (options.videoClips[0].includes('mock-storage') || options.videoClips[0].includes('mixkit')) { ... }
 
       console.log('[Stitcher] Downloading assets...');
+      console.log(`[Stitcher] Video clips: ${options.videoClips.join(', ')}`);
       const videoPaths = await Promise.all(options.videoClips.map(url => this.downloadToTemp(url, 'mp4')));
       tempFiles.push(...videoPaths);
       
@@ -52,42 +53,43 @@ class RealStitcherService implements StitcherService {
 
       // 2. Build FFmpeg command
       return new Promise((resolve, reject) => {
-        let command = ffmpeg();
+        const command = ffmpeg();
 
         // Add inputs
         videoPaths.forEach(p => command.input(p));
         command.input(audioPath);
 
         // Complex Filter Graph
-        // 1. Zoom effect (Ken Burns) on each input
+        // 1. Normalize each clip to consistent 9:16 resolution/fps
         // 2. Concat video streams
-        // 3. Draw text on the first few seconds (or overlay on the concatenated stream)
-        // 4. Mix audio
+        // 3. Map external audio track
         
         const complexFilter: string[] = [];
         const videoOutputMap: string[] = [];
 
         videoPaths.forEach((_, index) => {
-            // zoompan: zoom in slightly over duration. Assuming 5s clips (150 frames @ 30fps).
-            // Scale is needed after zoompan to ensure consistent resolution (e.g. 1080x1920)
-            complexFilter.push(`[${index}:v]zoompan=z='min(zoom+0.0015,1.5)':d=125:s=1080x1920[v${index}]`);
-            videoOutputMap.push(`[v${index}]`);
+          // IMPORTANT:
+          // `zoompan` is great for still images but can make real videos look like a single-frame zoom.
+          // Here we keep the original motion and just normalize formats so concat works reliably.
+          complexFilter.push(
+            `[${index}:v]` +
+              `scale=1080:1920:force_original_aspect_ratio=decrease,` +
+              `pad=1080:1920:(ow-iw)/2:(oh-ih)/2,` +
+              `setsar=1,` +
+              `fps=30,` +
+              `format=yuv420p,` +
+              `setpts=PTS-STARTPTS` +
+              `[v${index}]`
+          );
+          videoOutputMap.push(`[v${index}]`);
         });
 
         // Concat video streams
         const concatFilter = `${videoOutputMap.join('')}concat=n=${videoPaths.length}:v=1:a=0[vconcat]`;
         complexFilter.push(concatFilter);
 
-        // Text Overlay (Drawtext) - Only if hookText is provided
-        if (options.hookText) {
-          // Note: using default font. If it fails, we might need to specify a font file path or use 'sans-serif'
-          // Check if fontconfig is available or point to a known font.
-          // For safety on standard linux, we try keeping it simple.
-          complexFilter.push(`[vconcat]drawtext=text='${options.hookText.replace(/'/g, '')}':fontcolor=white:fontsize=64:x=(w-text_w)/2:y=h-400:enable='between(t,0,3)'[vfinal]`);
-        } else {
-          // Pass through [vconcat] as [vfinal] if no text
-          complexFilter.push(`[vconcat]null[vfinal]`);
-        }
+        // Passing through [vconcat] as [vfinal] directly
+        complexFilter.push(`[vconcat]null[vfinal]`);
 
         command
           .complexFilter(complexFilter)
@@ -95,6 +97,7 @@ class RealStitcherService implements StitcherService {
             '-map [vfinal]',     // Mapped video from filter
             `-map ${videoPaths.length}:a`, // Map the audio input (last input)
             '-c:v libx264',
+            '-movflags +faststart',
             '-pix_fmt yuv420p',
             '-shortest' // Finish when the shortest stream ends (likely video or audio)
           ])

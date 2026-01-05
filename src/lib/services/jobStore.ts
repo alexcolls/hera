@@ -1,11 +1,11 @@
-import { Job } from '../types/job';
+import { Job, JobLog } from '../types/job';
 import { supabaseAdmin } from '../supabase/admin';
 
 export interface JobStore {
   createJob(job: Job): Promise<void>;
   getJob(id: string): Promise<Job | null>;
   updateJob(id: string, updates: Partial<Job>): Promise<void>;
-  addLog(id: string, message: string): Promise<void>;
+  addLog(id: string, log: JobLog): Promise<void>;
 }
 
 class SupabaseJobStore implements JobStore {
@@ -47,7 +47,10 @@ class SupabaseJobStore implements JobStore {
       input: data.input,
       result: data.result,
       error: data.error,
-      logs: data.logs || []
+      logs: data.logs || [],
+      storyboard: data.storyboard,
+      musicPrompt: data.music_prompt,
+      narrativePrompt: data.narrative_prompt
     };
   }
 
@@ -56,10 +59,18 @@ class SupabaseJobStore implements JobStore {
     // or handle it via a specific stored procedure if concurrency was high.
     // For this MVP, standard update is fine.
     
-    const dbUpdates: any = { ...updates };
+    const dbUpdates: Record<string, unknown> = { ...(updates as Record<string, unknown>) };
     if (updates.createdAt) {
       dbUpdates.created_at = new Date(updates.createdAt).toISOString();
       delete dbUpdates.createdAt;
+    }
+    if (updates.musicPrompt) {
+        dbUpdates.music_prompt = updates.musicPrompt;
+        delete dbUpdates.musicPrompt;
+    }
+    if (updates.narrativePrompt) {
+        dbUpdates.narrative_prompt = updates.narrativePrompt;
+        delete dbUpdates.narrativePrompt;
     }
 
     const { error } = await supabaseAdmin
@@ -72,7 +83,7 @@ class SupabaseJobStore implements JobStore {
     }
   }
 
-  async addLog(id: string, message: string): Promise<void> {
+  async addLog(id: string, log: JobLog): Promise<void> {
     // This is tricky with simple UPDATEs as it's a race condition.
     // Best practice: Use a Postgres function or fetch-modify-save.
     // We'll do fetch-modify-save for MVP simplicity.
@@ -80,7 +91,7 @@ class SupabaseJobStore implements JobStore {
     const job = await this.getJob(id);
     if (!job) return;
 
-    const newLogs = [...(job.logs || []), message];
+    const newLogs = [...(job.logs || []), log];
     
     const { error } = await supabaseAdmin
       .from('jobs')
@@ -110,11 +121,11 @@ class InMemoryJobStore implements JobStore {
     }
   }
 
-  async addLog(id: string, message: string): Promise<void> {
+  async addLog(id: string, log: JobLog): Promise<void> {
     const job = this.jobs.get(id);
     if (job) {
       const logs = job.logs || [];
-      this.jobs.set(id, { ...job, logs: [...logs, message] });
+      this.jobs.set(id, { ...job, logs: [...logs, log] });
     }
   }
 }

@@ -14,20 +14,20 @@ export async function POST(
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    if (job.status !== 'waiting_for_storyboard_approval') {
-      return NextResponse.json({ error: 'Job is not waiting for storyboard approval' }, { status: 400 });
+    if (job.status !== 'waiting_for_video_approval') {
+      return NextResponse.json({ error: 'Job is not waiting for video approval' }, { status: 400 });
     }
 
     // Resume workflow
-    await jobStore.updateJob(id, { status: 'generating_video' });
-    await jobStore.addLog(id, { key: 'log.storyboardApprovedStartingVideo', ts: Date.now() });
+    await jobStore.updateJob(id, { status: 'generating_audio' });
+    await jobStore.addLog(id, { key: 'log.videosApprovedStartingAudio', ts: Date.now() });
     
-    // Trigger Phase 2
-    startWorkflow(id, 'generating_video').catch(console.error);
+    // Trigger Phase 3
+    startWorkflow(id, 'generating_audio').catch(console.error);
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    console.error('Error approving job:', error);
+    console.error('Error approving videos:', error);
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
   }

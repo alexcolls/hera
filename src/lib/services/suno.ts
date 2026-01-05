@@ -1,12 +1,12 @@
 const SUNO_API_KEY = process.env.NEXT_PUBLIC_SUNO_API_KEY;
 
 export interface SunoService {
-  generateMusic(prompt: string): Promise<string>; // Returns URL of generated audio
+  generateMusic(prompt: string, model?: string): Promise<string>; // Returns URL of generated audio
 }
 
 class SunoServiceImpl implements SunoService {
-  async generateMusic(prompt: string): Promise<string> {
-    console.log(`[Suno] Generating music for prompt: "${prompt}"`);
+  async generateMusic(prompt: string, model: string = 'suno-v3.5'): Promise<string> {
+    console.log(`[Suno] Generating music (${model}) for prompt: "${prompt}"`);
     // Mock response
     // In real app, call SunoAPI.org
     await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate generation time
